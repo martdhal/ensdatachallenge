@@ -1,0 +1,41 @@
+name: Tests and Docker
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+  docker:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t aml-explorer:ci .
+      - name: Test app code inside image
+        run: |
+          docker run --rm aml-explorer:ci python -c "from streamlit.testing.v1 import AppTest; a=AppTest.from_file('streamlit_app.py').run(timeout=30); assert not a.exception; assert a.metric[0].value == '160'"
+      - name: Verify HTTP health and data exclusion
+        run: |
+          docker run -d --name aml -p 127.0.0.1:8501:8501 aml-explorer:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8501/_stcore/health; then
+              docker exec aml python -c "from pathlib import Path; assert not Path('/app/data').exists(); assert not Path('/app/outputs').exists()"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs aml
+          exit 1
+      - name: Cleanup
+        if: always()
+        run: docker rm -f aml || true
