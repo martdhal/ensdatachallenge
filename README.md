@@ -59,23 +59,55 @@ The app does not persist uploaded files to disk.
 
 ## Run with Docker
 
-Install and start Docker Desktop on macOS, then:
+Install and start Docker Desktop. Run these commands from the repository root.
+Check `docker version`: both Client and Server should report a version.
+
+### Apple silicon Macs (M1, M2, M3 and later)
+
+Use the Linux AMD64 image under Docker Desktop emulation. This build and launch
+procedure was confirmed working on the author's Apple silicon Mac:
+
+```bash
+docker buildx build --platform linux/amd64 --load -t aml-explorer .
+docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 aml-explorer
+```
+
+Wait for the build to succeed before running the second command.
+`--load` loads the built image into the local Docker image store.
+The pinned `ecos` and `scikit-survival` versions attempt source compilation on
+Linux ARM64; this slim image does not include the required `gcc`/`g++` compilers.
+Native ARM64 builds are therefore not supported by the current Dockerfile.
+AMD64 emulation avoids that build failure, but may run slower than native execution.
+The CI container checks validate AMD64, not native ARM64.
+
+### Intel/AMD computers
 
 ```bash
 docker build -t aml-explorer .
 docker run --rm -p 127.0.0.1:8501:8501 aml-explorer
 ```
 
-Open http://localhost:8501. The image runs as a non-root user. It includes
-**only code, dependencies and synthetic demo CSVs**, never `data/` or `outputs/`.
+Open http://localhost:8501 and keep the terminal running. Press Ctrl+C to stop.
+The image runs as a non-root user. It includes **only code, dependencies and
+synthetic demo CSVs**, never `data/` or `outputs/`.
 The image health check probes `/_stcore/health`.
 
-To use your local challenge files without adding them to the image:
+### Use local challenge data
+
+Mount the local data folder read-only, without adding it to the image.
+On Apple silicon:
+
+```bash
+docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
+```
+
+On Intel/AMD:
 
 ```bash
 docker run --rm -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
 ```
 
+Stop any existing container using port 8501 before starting another.
 Then choose **Repository data**. Without that mount, choose demo or upload mode.
 
 ## Tests and CI
