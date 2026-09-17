@@ -134,7 +134,7 @@ before claiming the Docker build passed. The workflow does not publish an image.
 ## Reproducibility
 
 - Python 3.12; Docker base fixes the Python patch and Debian variant.
-- `requirements.in` lists direct dependencies; `requirements.txt` pins the full tested environment.
+- `requirements.txt` is the single dependency file and pins the full tested environment.
 - Recreate the environment with `pip install -r requirements.txt`.
 - Seed 42 controls both the demo generator and train/test split.
 - Regenerate examples with `python demo/generate.py`.
@@ -145,20 +145,14 @@ before claiming the Docker build passed. The workflow does not publish an image.
 
 ## Relationship to the original project
 
-`train_and_submit.py` is the original competition training script, retained unchanged.
-It builds clinical/molecular features and combines Coxnet with gradient boosting.
-Its saved `outputs/model.joblib` is not loaded by the app: its original environment
-and compatibility have not been verified. The original ensemble's rank-based scores
-depend on the prediction cohort and are not survival probabilities.
+This app adapts the ENS survival challenge into a small, reproducible clinical
+explorer. Its Cox baseline reports Harrell C-index, not the original ensemble's
+IPCW C-index; no competition performance is claimed.
 
-The app's lightweight clinical baseline is a new reproducible demonstration, not a
-reproduction of competition performance. Its Harrell metric differs from the original
-IPCW C-index at tau=7. No leaderboard score is claimed for this baseline.
-
-The original script remains available for further research; a complete historical
-training reproduction is outside the validated app workflow. Its learned gene/category
-selection occurs before cross-validation and should be moved inside folds before
-using those CV results as an unbiased performance estimate.
+Unused competition scripts, saved models, submissions and unlabelled test CSVs
+were removed from the current tree to keep the assignment focused.
+They remain recoverable in the [original project snapshot](https://github.com/martdhal/ensdatachallenge/tree/9b2a8ae6cf27d71233dfbb2448b308d9dbf21ced).
+The three original training CSVs used by the app remain in `data/`.
 
 ## Data provenance and submission
 
@@ -171,7 +165,7 @@ The original project is credited to its existing Git history. This Streamlit ada
 was developed with AI assistance and should be reviewed, understood and disclosed
 according to course rules.
 
-Submit this repository's URL after reviewing/merging the adaptation branch.
+Submit this public repository: https://github.com/martdhal/ensdatachallenge
 Publishing an image to Docker Hub is optional and has not been performed.
 
 ## Layout
@@ -183,4 +177,8 @@ Publishing an image to Docker Hub is optional and has not been performed.
 - `demo/`: fictional reproducible fixtures.
 - `Dockerfile`, `.dockerignore`: container packaging.
 - `.github/workflows/ci.yml`: automated verification.
-- `train_and_submit.py`, `data/`, `outputs/`: original research project.
+- `data/`: the three original CSVs used by the app.
+- `requirements.txt`: pinned Python dependencies.
+- `pytest.ini`: test discovery configuration.
+- `.streamlit/config.toml`: interface and server settings.
+- `.gitignore`: exclude temporary local files.
