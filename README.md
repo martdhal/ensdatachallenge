@@ -1,13 +1,39 @@
 # AML Cohort Explorer
 
-Individual Streamlit adaptation of Martin d’Halloy's ENS survival data challenge project.
-Explore clinical measurements, gene prevalence and right-censored follow-up, then
-evaluate a small Cox survival baseline. This is an educational research application,
-not a clinical decision tool.
+J’ai adapté mon projet ENS de prédiction de survie en une application Streamlit pour explorer les données cliniques, les mutations et les courbes de survie. J’y propose également une baseline Cox simplifiée.
 
-## Quick start (Python 3.12)
+## Récupérer le projet
 
-From the repository root:
+```bash
+git clone https://github.com/martdhal/ensdatachallenge.git
+cd ensdatachallenge
+```
+
+Toutes les commandes suivantes s’exécutent à la racine du dépôt.
+
+## Lancer avec Docker
+
+Docker doit être démarré (Docker Desktop sur Mac). Les commandes ci-dessous montent les données du dépôt en lecture seule.
+
+### Mac Apple Silicon (M1 et suivants)
+
+J’ai utilisé ces commandes sur mon Mac. L’image AMD64 s’exécute par émulation ; la construction ARM64 native n’est pas prise en charge.
+
+```bash
+docker buildx build --platform linux/amd64 --load -t aml-explorer .
+docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
+```
+
+### Intel / AMD (x86-64)
+
+```bash
+docker build -t aml-explorer .
+docker run --rm -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
+```
+
+Ouvrir **http://localhost:8501**. Arrêter avec **Ctrl+C**.
+
+## Alternative : lancement avec Python 3.12
 
 ```bash
 python3.12 -m venv .venv
@@ -16,169 +42,28 @@ python -m pip install -r requirements.txt
 python -m streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501. No account, API key or model download is required.
-The default **Synthetic demo** contains 160 fictional patients and fictional genes.
+L’interface est accessible à la même adresse : **http://localhost:8501**.
 
-## Use the app
+## Utiliser l’interface
 
-1. Choose **Synthetic demo**, **Repository data**, or **Upload CSV files**.
-2. Select centers and the bone-marrow-blast range. Bounds are inclusive.
-   An empty center selection selects no patients. Missing blast values can be included.
-3. Explore clinical distributions and missingness.
-4. Inspect mutation prevalence (distinct patients per gene / all selected patients).
-5. View a Kaplan–Meier curve using patients with follow-up; censored observations are handled.
-6. Click **Train and evaluate baseline** to train once and display held-out scores.
-7. Export the filtered clinical table or the held-out predictions.
+Dans la barre latérale, choisir une source :
 
-The baseline is intentionally small: six numeric clinical measurements, median
-imputation, standardization, and ridge-regularized Cox PH (alpha=1).
-The split is 75% training / 25% test, stratified by event status, seed 42.
-Imputation and scaling fit only on the training partition. At least 40 labelled
-patients and 8 per status are required. The UI reports one held-out **Harrell C-index**.
-Repeatedly selecting cohorts based on that score is not independent validation.
-Clinical assumptions, subgroup stability and external validity have not been assessed.
+- **Synthetic demo** : démonstration par défaut sur 160 patients fictifs.
+- **Repository data** : données du projet dans `data/`, accessibles avec les commandes ci-dessus.
+- **Upload CSV files** : import de données personnelles au format des exemples de `demo/` ; fichier clinique obligatoire, mutations et suivi de survie facultatifs.
 
-Missing measurements are allowed, invalid numeric strings/infinities/negative values
-are rejected. Clinical/target IDs must be unique and are preserved as strings.
-Molecular and target IDs absent from the clinical table are rejected.
-Patients without mutation rows are retained in prevalence denominators; absence of a
-record is not proof of a negative assay.
-Repository follow-up rows with missing status/time are excluded with an explicit count.
-Uploaded target files must have complete follow-up rows; follow-up is optional.
+Filtrer les centres et le pourcentage de blastes, puis consulter les onglets **Clinical overview**, **Mutations**, **Survival** et **Model baseline**. Dans ce dernier, cliquer sur **Train and evaluate baseline** pour entraîner le modèle et afficher son score. Les tableaux filtrés et les prédictions peuvent être téléchargés depuis l’interface.
 
-## CSV contracts
+Aucun compte ni clé API n’est nécessaire. L’image Docker contient la démonstration synthétique ; les données du projet sont fournies par le montage du dossier `data/`.
 
-| File | Required columns | Rules |
-| --- | --- | --- |
-| Clinical | ID, CENTER, BM_BLAST, WBC, ANC, MONOCYTES, HB, PLT | Unique nonempty ID; numeric measurements may be missing; BM_BLAST 0–100 |
-| Molecular (optional on upload) | ID, GENE | Multiple mutation rows per patient allowed |
-| Target (optional on upload) | ID, OS_YEARS, OS_STATUS | Unique ID; finite nonnegative years; status 0=censored, 1=event |
+## Tests et CI
 
-Use comma-separated UTF-8 CSVs. Demo examples are in `demo/`.
-The app does not persist uploaded files to disk.
-
-## Run with Docker
-
-Install and start Docker Desktop. Run these commands from the repository root.
-Check `docker version`: both Client and Server should report a version.
-
-### Apple silicon Macs (M1, M2, M3 and later)
-
-Use the Linux AMD64 image under Docker Desktop emulation. This build and launch
-procedure was confirmed working on the author's Apple silicon Mac:
-
-```bash
-docker buildx build --platform linux/amd64 --load -t aml-explorer .
-docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 aml-explorer
-```
-
-Wait for the build to succeed before running the second command.
-`--load` loads the built image into the local Docker image store.
-The pinned `ecos` and `scikit-survival` versions attempt source compilation on
-Linux ARM64; this slim image does not include the required `gcc`/`g++` compilers.
-Native ARM64 builds are therefore not supported by the current Dockerfile.
-AMD64 emulation avoids that build failure, but may run slower than native execution.
-The CI container checks validate AMD64, not native ARM64.
-
-### Intel/AMD computers
-
-```bash
-docker build -t aml-explorer .
-docker run --rm -p 127.0.0.1:8501:8501 aml-explorer
-```
-
-Open http://localhost:8501 and keep the terminal running. Press Ctrl+C to stop.
-The image runs as a non-root user. It includes **only code, dependencies and
-synthetic demo CSVs**, never `data/` or `outputs/`.
-The image health check probes `/_stcore/health`.
-
-### Use local challenge data
-
-Mount the local data folder read-only, without adding it to the image.
-On Apple silicon:
-
-```bash
-docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
-```
-
-On Intel/AMD:
-
-```bash
-docker run --rm -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
-```
-
-Stop any existing container using port 8501 before starting another.
-Then choose **Repository data**. Without that mount, choose demo or upload mode.
-
-## Tests and CI
+Dans l’environnement Python installé ci-dessus :
 
 ```bash
 python -m pytest -q
 ```
 
-Tests cover malformed CSVs, schemas, duplicates, ID preservation, numeric validity,
-inclusive filters, empty results, missing follow-up, gene-count denominators,
-censoring/tied times, model reproducibility and Streamlit interactions.
-Tests use synthetic data only.
+Les tests couvrent notamment l’import et la validation des CSV, les filtres, le modèle et l’interface. La [CI GitHub Actions](https://github.com/martdhal/ensdatachallenge/actions) exécute les tests, construit l’image Docker et vérifie le démarrage de l’application à chaque push et pull request.
 
-`.github/workflows/ci.yml` runs on pushes and pull requests:
-1. Install the pinned environment and run pytest.
-2. Build the Docker image.
-3. Execute a Streamlit AppTest inside the image.
-4. Start the container, verify HTTP health and confirm that real-data/model directories
-   are absent.
-
-GitHub Actions must be enabled, with available runner capacity. Check the run status
-before claiming the Docker build passed. The workflow does not publish an image.
-
-## Reproducibility
-
-- Python 3.12; Docker base fixes the Python patch and Debian variant.
-- `requirements.txt` is the single dependency file and pins the full tested environment.
-- Recreate the environment with `pip install -r requirements.txt`.
-- Seed 42 controls both the demo generator and train/test split.
-- Regenerate examples with `python demo/generate.py`.
-- `demo/SHA256SUMS` records the demo files used for this version.
-- No network requests or pretrained-model downloads are required at app runtime.
-- Docker base tags can be updated upstream; for bit-for-bit archival, record the
-  built image digest and platform. Numerical libraries/platforms may produce small differences.
-
-## Relationship to the original project
-
-This app adapts the ENS survival challenge into a small, reproducible clinical
-explorer. Its Cox baseline reports Harrell C-index, not the original ensemble's
-IPCW C-index; no competition performance is claimed.
-
-Unused competition scripts, saved models, submissions and unlabelled test CSVs
-were removed from the current tree to keep the assignment focused.
-They remain recoverable in the [original project snapshot](https://github.com/martdhal/ensdatachallenge/tree/9b2a8ae6cf27d71233dfbb2448b308d9dbf21ced).
-The three original training CSVs used by the app remain in `data/`.
-
-## Data provenance and submission
-
-The existing `data/` files come from the original ENS challenge work. The project
-owner has confirmed that these data are not confidential. The Docker image uses
-synthetic demonstration data by default; the original CSVs can be loaded through
-a read-only mount or the upload interface.
-
-The original project is credited to its existing Git history. This Streamlit adaptation
-was developed with AI assistance and should be reviewed, understood and disclosed
-according to course rules.
-
-Submit this public repository: https://github.com/martdhal/ensdatachallenge
-Publishing an image to Docker Hub is optional and has not been performed.
-
-## Layout
-
-- `streamlit_app.py`: interface.
-- `aml/data.py`: importing, validation, filtering, prevalence.
-- `aml/model.py`: Kaplan–Meier and lightweight Cox evaluation.
-- `tests/`: unit and app interaction tests.
-- `demo/`: fictional reproducible fixtures.
-- `Dockerfile`, `.dockerignore`: container packaging.
-- `.github/workflows/ci.yml`: automated verification.
-- `data/`: the three original CSVs used by the app.
-- `requirements.txt`: pinned Python dependencies.
-- `pytest.ini`: test discovery configuration.
-- `.streamlit/config.toml`: interface and server settings.
-- `.gitignore`: exclude temporary local files.
+Les dépendances sont figées dans `requirements.txt`. La génération de la démonstration et la séparation entraînement/test utilisent la graine 42.
