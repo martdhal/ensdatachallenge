@@ -162,12 +162,10 @@ using those CV results as an unbiased performance estimate.
 
 ## Data provenance and submission
 
-The existing `data/` files come from the original ENS challenge work. Their redistribution
-terms have not been established here. The repository remains private; do not assume
-that existing Git tracking authorizes public redistribution.
-Use synthetic data for any public container demonstration. Contact the instructors
-via Slack if confidentiality prevents making the submission repository public, as
-specified in the assignment.
+The existing `data/` files come from the original ENS challenge work. The project
+owner has confirmed that these data are not confidential. The Docker image uses
+synthetic demonstration data by default; the original CSVs can be loaded through
+a read-only mount or the upload interface.
 
 The original project is credited to its existing Git history. This Streamlit adaptation
 was developed with AI assistance and should be reviewed, understood and disclosed
