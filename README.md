@@ -1,39 +1,33 @@
 # AML Cohort Explorer
 
-J’ai adapté mon projet ENS de prédiction de survie en une application Streamlit pour explorer les données cliniques, les mutations et les courbes de survie. J’y propose également une baseline Cox simplifiée.
+J’ai adapté mon projet ENS de prédiction de survie en une application Streamlit : exploration clinique, prévalence des mutations, estimation de Kaplan–Meier et évaluation d’une baseline Cox.
 
-## Récupérer le projet
+## Exécution
 
 ```bash
 git clone https://github.com/martdhal/ensdatachallenge.git
 cd ensdatachallenge
 ```
 
-Toutes les commandes suivantes s’exécutent à la racine du dépôt.
+Interface : **http://localhost:8501**. Commandes exécutées à la racine du dépôt.
 
-## Lancer avec Docker
-
-Docker doit être démarré (Docker Desktop sur Mac). Les commandes ci-dessous montent les données du dépôt en lecture seule.
-
-### Mac Apple Silicon (M1 et suivants)
-
-J’ai utilisé ces commandes sur mon Mac. L’image AMD64 s’exécute par émulation ; la construction ARM64 native n’est pas prise en charge.
-
-```bash
-docker buildx build --platform linux/amd64 --load -t aml-explorer .
-docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
-```
-
-### Intel / AMD (x86-64)
+### Docker — x86-64
 
 ```bash
 docker build -t aml-explorer .
 docker run --rm -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
 ```
 
-Ouvrir **http://localhost:8501**. Arrêter avec **Ctrl+C**.
+### Docker — Apple Silicon
 
-## Alternative : lancement avec Python 3.12
+Exécution AMD64 par émulation sous Docker Desktop ; build ARM64 natif non pris en charge.
+
+```bash
+docker buildx build --platform linux/amd64 --load -t aml-explorer .
+docker run --rm --platform linux/amd64 -p 127.0.0.1:8501:8501 -v "$(pwd)/data:/app/data:ro" aml-explorer
+```
+
+### Python 3.12
 
 ```bash
 python3.12 -m venv .venv
@@ -42,28 +36,25 @@ python -m pip install -r requirements.txt
 python -m streamlit run streamlit_app.py
 ```
 
-L’interface est accessible à la même adresse : **http://localhost:8501**.
+## Données et interface
 
-## Utiliser l’interface
+La source se sélectionne dans la barre latérale :
 
-Dans la barre latérale, choisir une source :
+| Source | Données |
+| --- | --- |
+| **Synthetic demo** (défaut) | 160 patients fictifs ; CSV inclus dans l’image |
+| **Repository data** | CSV de `data/` ; volume en lecture seule avec les commandes Docker ci-dessus |
+| **Upload CSV files** | CSV clinique requis ; mutations et suivi de survie facultatifs ; schémas illustrés dans `demo/` |
 
-- **Synthetic demo** : démonstration par défaut sur 160 patients fictifs.
-- **Repository data** : données du projet dans `data/`, accessibles avec les commandes ci-dessus.
-- **Upload CSV files** : import de données personnelles au format des exemples de `demo/` ; fichier clinique obligatoire, mutations et suivi de survie facultatifs.
+Les filtres portent sur le centre et le pourcentage de blastes. Les onglets donnent accès aux distributions cliniques, aux mutations, aux courbes de survie et au modèle. L’entraînement se déclenche via **Train and evaluate baseline** dans **Model baseline**. Export des données filtrées et des prédictions depuis l’interface.
 
-Filtrer les centres et le pourcentage de blastes, puis consulter les onglets **Clinical overview**, **Mutations**, **Survival** et **Model baseline**. Dans ce dernier, cliquer sur **Train and evaluate baseline** pour entraîner le modèle et afficher son score. Les tableaux filtrés et les prédictions peuvent être téléchargés depuis l’interface.
-
-Aucun compte ni clé API n’est nécessaire. L’image Docker contient la démonstration synthétique ; les données du projet sont fournies par le montage du dossier `data/`.
-
-## Tests et CI
-
-Dans l’environnement Python installé ci-dessus :
+## Validation et reproductibilité
 
 ```bash
+# Dans l’environnement Python ci-dessus
 python -m pytest -q
 ```
 
-Les tests couvrent notamment l’import et la validation des CSV, les filtres, le modèle et l’interface. La [CI GitHub Actions](https://github.com/martdhal/ensdatachallenge/actions) exécute les tests, construit l’image Docker et vérifie le démarrage de l’application à chaque push et pull request.
-
-Les dépendances sont figées dans `requirements.txt`. La génération de la démonstration et la séparation entraînement/test utilisent la graine 42.
+- Tests : import et validation des CSV, filtrage, modèle et interactions Streamlit.
+- [CI GitHub Actions](https://github.com/martdhal/ensdatachallenge/actions) : tests, build Docker et vérification du démarrage du conteneur à chaque push et pull request.
+- Dépendances figées dans `requirements.txt` ; graine 42 pour la démonstration et la séparation entraînement/test.
